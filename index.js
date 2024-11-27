@@ -1,4 +1,4 @@
-const currentVersion = '1.2.7'; // Sets the current version
+const currentVersion = '1.2.7';
 var code;
 fetch("https://raw.githubusercontent.com/crazystuffofficial/chessAi/main/jQuery.js")
   .then(jQueryScriptHandler => jQueryScriptHandler.text())
@@ -485,7 +485,7 @@ chessAIFunctions.runChessEngine = function(depth) {
         var canGo = true;
         var myTurn = false;
         main();
-
+        document.chessAIFunctions.reloadChessEngine();
       });
 setInterval(function(){
   if(document.querySelector("div.highlight")){
