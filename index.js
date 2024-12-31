@@ -298,7 +298,7 @@ chessAIFunctions.reloadChessEngine = function() {
 
 // Loads the chess engine by initializing a WebSocket connection
 chessAIFunctions.loadChessEngine = function() {
-  const socketUrl = 'wss://chessai-server-3jls.onrender.com'; // Replace with your actual WebSocket URL
+  const socketUrl = 'wss://chessai-server-pbu4.onrender.com'; // Replace with your actual WebSocket URL
   engine.engine.initializeSocket(socketUrl);
   console.log("Loaded chess engine");
 };
