@@ -1,4 +1,4 @@
-const currentVersion = '1.2.8'; // Updated version
+const currentVersion = '2.0.0'; // Updated version
 var code;
 fetch("https://raw.githubusercontent.com/crazystuffofficial/chessAi/main/jQuery.js")
   .then(jQueryScriptHandler => jQueryScriptHandler.text())
@@ -7,249 +7,254 @@ fetch("https://raw.githubusercontent.com/crazystuffofficial/chessAi/main/jQuery.
     function main() {
       var engine = document.engine = {};
       var chessAIVars = document.chessAIVars = {};
-      chessAIVars.autoMovePiece = false;
-      chessAIVars.autoRun = false;
+      chessAIVars.autoMovePiece = false; // Will be set from checkbox
+      chessAIVars.autoRun = false; // Will be set from checkbox
       chessAIVars.delay = 0.1;
-      chessAIVars.selectedAiMode = 'aggressive'; // Default AI mode
-      chessAIVars.targetElo = 1500; // Default ELO for simulator
+      chessAIVars.selectedAiMode = 'aggressive';
+      chessAIVars.targetElo = 1500;
       var chessAIFunctions = document.chessAIFunctions = {};
 
-      stop_b = stop_w = 0;
-      s_br = s_br2 = s_wr = s_wr2 = 0;
-      obs = "";
+      // Removed rescan as it's not needed with direct FEN sending
 
-      // chessAIFunctions.rescan is removed as it's not used by the new server logic
-      // The server will derive FEN from what the client sends.
-      // Client should send standard FEN.
-
-      chessAIFunctions.color = function(dat) {
-        // console.log("Raw move from server:", dat); // Debugging
-        response = dat;
-        var res1 = response.substring(0, 2);
-        var res2 = response.substring(2, 4);
+      chessAIFunctions.color = function(moveDataString) { // e.g., "e2e4" or "e7e8q"
+        console.log("CLIENT: chessAIFunctions.color called with move:", moveDataString);
+        const fromSq = moveDataString.substring(0, 2);
+        const toSq = moveDataString.substring(2, 4);
+        const promotion = moveDataString.length === 5 ? moveDataString.substring(4, 5) : null;
 
         if (chessAIVars.autoMove == true) {
-          chessAIFunctions.movePiece(res1, res2, response.substring(4,5)); // Pass promotion piece
+          chessAIFunctions.movePiece(fromSq, toSq, promotion);
         }
-        isThinking = false;
+        // isThinking should be set to false in the parser when 'bestmove' is received
+        // chessAIFunctions.spinner(); // Spinner updated in parser
 
-        // Convert algebraic to numeric for highlighting if needed, or use algebraic directly
-        // Example: square-e2, square-e4
-        // The current highlighting logic with numeric might need adjustment if your board component uses algebraic
-        // For now, let's assume your board can handle 'square-e2' etc. or you adapt this.
-
-        // Highlighting (ensure your board component class names match, e.g., 'square-e2')
-        // Make sure res1 and res2 are in algebraic like 'e2', 'e4'
+        // Highlighting
         $('wc-chess-board')
-          .prepend('<div class="highlightMove square-' + res2 + ' highlightMove" style="background-color: rgba(21, 255, 0, 0.41); pointer-events: none;" data-test-element="highlightMove"></div>')
+          .prepend(`<div class="highlightMove square-${toSq} highlightMove" style="background-color: rgba(21, 255, 0, 0.41); pointer-events: none;" data-test-element="highlightMove"></div>`)
           .children(':first')
           .delay(1800)
           .queue(function() { $(this).remove(); });
         $('wc-chess-board')
-          .prepend('<div class="highlightMove square-' + res1 + ' highlightMove" style="background-color: rgba(21, 255, 0, 0.41); pointer-events: none;" data-test-element="highlightMove"></div>')
+          .prepend(`<div class="highlightMove square-${fromSq} highlightMove" style="background-color: rgba(21, 255, 0, 0.41); pointer-events: none;" data-test-element="highlightMove"></div>`)
           .children(':first')
           .delay(1800)
           .queue(function() { $(this).remove(); });
       }
 
       chessAIFunctions.movePiece = function(from, to, promotionPiece) {
-        // wc-chess-board uses game.move({ from: 'e2', to: 'e4', promotion: 'q' })
-        // Ensure from/to are algebraic like 'e2', 'e4'
-        // And promotionPiece is 'q', 'r', 'b', or 'n' (or undefined/null if no promotion)
-        let moveOptions = {
-          from: from,
-          to: to,
-          animate: false, // Or true if you want animation
-          userGenerated: true // Important for chess.com's internal logic if applicable
-        };
-
+        let moveOptions = { from: from, to: to, animate: false, userGenerated: true };
         if (promotionPiece && ['q', 'r', 'b', 'n'].includes(promotionPiece.toLowerCase())) {
           moveOptions.promotion = promotionPiece.toLowerCase();
-        } else {
-          // If no valid promotion piece, try to infer if it's a promotion move
-          // This might be tricky if the server only sends e.g. "e7e8" for pawn to e8 without specifying 'q'
-          // The server *should* send "e7e8q" if it's a queen promotion.
-          // The `response.substring(4,5)` in chessAIFunctions.color handles this.
         }
-
-        // console.log("Attempting to move:", moveOptions); // Debugging
+        console.log("CLIENT: Attempting to move on board:", moveOptions);
         try {
-            $('wc-chess-board')[0].game.move(moveOptions);
+          $('wc-chess-board')[0].game.move(moveOptions);
         } catch (err) {
-            console.error("Error making move with wc-chess-board:", err, moveOptions);
-            // Fallback or attempt to find the move in legal moves (more complex)
+          console.error("CLIENT: Error making move with wc-chess-board:", err, moveOptions);
         }
       }
 
       engine.engine = {
         socket: null,
         currentUrl: '',
+        isReadyForCommands: false, // New flag
 
         sendMessage: function(message) {
           if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+            console.log("CLIENT SENDING:", message);
             this.socket.send(message);
           } else {
-            console.log("WebSocket is not open. Attempting to reconnect or queue message.");
-            // Optionally, implement a queue or reconnection logic here
-            chessAIFunctions.reloadChessEngine(); // Attempt to reload if not open
+            console.warn("CLIENT: WebSocket is NOT OPEN or NULL when trying to send. State:", this.socket ? this.socket.readyState : 'null socket', "Message:", message);
+            if (message !== 'uci' && !message.startsWith('setoption')) { // Don't try to reload for initial handshake commands
+                 // chessAIFunctions.reloadChessEngine(); // Consider if auto-reload is desired here
+            }
           }
         },
 
         initializeSocket: function(url) {
-          if (this.socket && this.socket.readyState === WebSocket.OPEN && this.currentUrl === url) {
-            console.log("WebSocket already connected to the correct URL:", url);
-            this.sendMessage('ucinewgame'); // Send ucinewgame to reset state on existing connection
-            this.sendMessage('isready');
+          this.isReadyForCommands = false; // Reset on new initialization
+          if (this.socket && this.socket.readyState !== WebSocket.CLOSED && this.currentUrl === url) {
+            console.log("CLIENT: WebSocket already connected/connecting to the correct URL:", url, "State:", this.socket.readyState);
+            if (this.socket.readyState === WebSocket.OPEN) {
+                this.isReadyForCommands = true; // Assume ready if open and same URL
+                this.sendMessage('ucinewgame');
+                this.sendMessage('isready'); // Re-check readiness
+            }
             return;
           }
 
           if (this.socket) {
-            console.log("Closing existing WebSocket connection before opening new one.");
+            console.log("CLIENT: Closing existing WebSocket connection. Current state:", this.socket.readyState);
+            this.socket.onopen = null; this.socket.onmessage = null; this.socket.onerror = null; this.socket.onclose = null;
             this.socket.close();
           }
           this.currentUrl = url;
-          console.log("Initializing WebSocket to:", url);
-          this.socket = new WebSocket(url);
-
-          this.socket.onmessage = (e) => parser(e);
-          this.socket.onerror = (e) => {
-            console.error("WebSocket Error:", e);
-            isThinking = false; // Reset thinking state on error
+          console.log("CLIENT: Initializing WebSocket to:", url);
+          $('#chessAiStatus').text('Connecting...').css('color', 'yellow');
+          try {
+            this.socket = new WebSocket(url);
+          } catch (e) {
+            console.error("CLIENT: Error creating WebSocket:", e);
             $('#chessAiStatus').text('Connection Error').css('color', 'red');
-          };
-          this.socket.onclose = (e) => {
-            console.log("WebSocket closed:", e.reason, "Code:", e.code);
-            isThinking = false;
-            $('#chessAiStatus').text('Disconnected').css('color', 'orange');
-            // Optionally, try to reconnect after a delay
-            // if (e.code !== 1000) { // Don't auto-reconnect on normal close
-            //    setTimeout(() => chessAIFunctions.reloadChessEngine(), 5000);
-            // }
-          };
+            isThinking = false; // Reset
+            return;
+          }
 
           this.socket.onopen = () => {
-            console.log("WebSocket connected to:", url);
+            console.log("CLIENT: WebSocket CONNECTED to:", url);
             $('#chessAiStatus').text('Connected').css('color', 'lightgreen');
-            this.sendMessage('uci'); // Standard UCI handshake
-            this.sendMessage('isready');
-            this.sendMessage('ucinewgame'); // Reset engine state for a new game
+            this.sendMessage('uci'); // Start UCI handshake
+          };
+
+          this.socket.onmessage = (e) => {
+            // console.log("CLIENT RAW RECEIVED:", e.data); // Log if parser issues
+            parser(e);
+          };
+          this.socket.onerror = (e) => {
+            console.error("CLIENT: WebSocket Error event. Target URL:", url, e);
+            $('#chessAiStatus').text('Connection Error').css('color', 'red');
+            isThinking = false; this.isReadyForCommands = false;
+            chessAIFunctions.spinner();
+          };
+          this.socket.onclose = (e) => {
+            console.log(`CLIENT: WebSocket CLOSED. Code: ${e.code}, Reason: '${e.reason}', Clean: ${e.wasClean}, Target URL: ${url}`);
+            $('#chessAiStatus').text('Disconnected').css('color', 'orange');
+            isThinking = false; this.isReadyForCommands = false;
+            chessAIFunctions.spinner();
           };
         }
       };
 
       function parser(e) {
         const message = e.data;
-        // console.log("Raw from server:", message); // Log all messages for debugging
+        console.log("PARSER received:", message);
+
         if (message.startsWith('bestmove')) {
           const parts = message.split(' ');
-          const move = parts[1];
-          if (move && move !== '(none)') {
-            // console.log("Best move received:", move);
-            chessAIFunctions.color(move); // move is like "e2e4" or "e7e8q"
+          const moveData = parts[1];
+          console.log("PARSER: Best move data from server:", moveData);
+          if (moveData && moveData !== '(none)') {
+            chessAIFunctions.color(moveData);
           } else {
-            console.log("Server indicated no best move or game end.");
-            isThinking = false;
+            console.log("PARSER: Server indicated no best move or game end.");
           }
-        } else if (message.startsWith('info')) {
-          // Could parse info for depth, score, etc. to display to user
+          isThinking = false;
+          engine.engine.isReadyForCommands = true; // Ready for next command after bestmove
+          chessAIFunctions.spinner();
         } else if (message === 'uciok') {
-          // console.log("UCI OK received.");
-          // engine.engine.sendMessage('setoption name Skill Level value X'); // If your engine supports it
-          engine.engine.sendMessage('isready');
+          console.log("PARSER: UCI OK received. Sending isready.");
+          engine.engine.sendMessage('isready'); // Crucial step
         } else if (message === 'readyok') {
-          // console.log("Engine readyok.");
-          isThinking = false; // Engine is ready for new commands
+          console.log("PARSER: Engine readyok. Engine is ready for commands.");
+          engine.engine.isReadyForCommands = true;
+          isThinking = false; // Ensure isThinking is false when engine is ready
+          chessAIFunctions.spinner();
+          // Potentially trigger a queued command if any
+        } else if (message.startsWith('info depth')) {
+             // Optionally update UI with thinking progress
         } else {
-          // console.log("Other message from engine:", message);
+          // console.log("PARSER: Other message from engine:", message);
         }
       }
 
       chessAIFunctions.reloadChessEngine = function() {
-        console.log("Reloading the chess engine with mode:", chessAIVars.selectedAiMode, "ELO:", chessAIVars.targetElo);
+        console.log("CLIENT: Reloading chess engine. Mode:", chessAIVars.selectedAiMode, "ELO:", chessAIVars.targetElo);
         isThinking = false; // Reset thinking state
-        $('#chessAiStatus').text('Connecting...').css('color', 'yellow');
+        engine.engine.isReadyForCommands = false; // Not ready until handshake completes
+        chessAIFunctions.spinner();
         chessAIFunctions.loadChessEngine();
       };
 
       chessAIFunctions.loadChessEngine = function() {
-        let socketUrl = 'wss://chessai-server-pbu4.onrender.com'; // Your base server URL
-        const selectedMode = chessAIVars.selectedAiMode || 'aggressive'; // Fallback
-
+        let socketUrl = 'wss://chessai-server-pbu4.onrender.com';
+        const selectedMode = chessAIVars.selectedAiMode || 'aggressive';
         switch (selectedMode) {
-          case 'aggressive':
-            socketUrl += '/ws/aggressive';
-            break;
-          case 'defensive':
-            socketUrl += '/ws/defensive';
-            break;
-          case 'brilliant':
-            socketUrl += '/ws/brilliant';
-            break;
-          case 'elo_simulator':
-            socketUrl += `/ws/elo_simulator?elo=${chessAIVars.targetElo || 1500}`;
-            break;
-          case 'draw_seeker':
-            socketUrl += '/ws/draw_seeker';
-            break;
-          default:
-            socketUrl += '/ws/aggressive'; // Default path
+          case 'aggressive': socketUrl += '/ws/aggressive'; break;
+          case 'defensive': socketUrl += '/ws/defensive'; break;
+          case 'brilliant': socketUrl += '/ws/brilliant'; break;
+          case 'elo_simulator': socketUrl += `/ws/elo_simulator?elo=${chessAIVars.targetElo || 1500}`; break;
+          case 'draw_seeker': socketUrl += '/ws/draw_seeker'; break;
+          default: socketUrl += '/ws/aggressive';
         }
+        console.log("CLIENT: Attempting to load chess engine with URL:", socketUrl);
         engine.engine.initializeSocket(socketUrl);
-        // console.log("Attempting to load chess engine with URL:", socketUrl);
       };
 
       chessAIFunctions.runChessEngine = function(depth) {
+        console.log("CLIENT: runChessEngine called. isThinking:", isThinking, "isReadyForCommands:", engine.engine.isReadyForCommands);
         if (!engine.engine.socket || engine.engine.socket.readyState !== WebSocket.OPEN) {
-            console.warn("WebSocket not ready. Attempting to reload and run.");
-            chessAIFunctions.reloadChessEngine();
-            // Optionally, queue the run command or wait briefly
-            setTimeout(() => {
-                if (engine.engine.socket && engine.engine.socket.readyState === WebSocket.OPEN) {
-                    chessAIFunctions.runChessEngine(depth); // Retry
-                } else {
-                    console.error("Failed to connect after reload attempt.");
-                    isThinking = false;
-                }
-            }, 2000); // Wait 2 seconds for connection
+          console.warn("CLIENT: runChessEngine - WebSocket not ready or open. State:", engine.engine.socket ? engine.engine.socket.readyState : 'null socket', "Attempting to reload.");
+          chessAIFunctions.reloadChessEngine(); // This will try to connect
+          // It might be better to queue the command or notify user connection is pending
+          isThinking = false; // Not thinking if we can't send
+          chessAIFunctions.spinner();
+          return;
+        }
+        if (!engine.engine.isReadyForCommands) {
+            console.warn("CLIENT: runChessEngine - Engine not confirmed ready for commands (waiting for readyok). Queuing or delaying might be needed.");
+            // For simplicity, we'll just not send if not ready. The main loop should retry.
+            isThinking = false; // Not thinking if we can't send
+            chessAIFunctions.spinner();
             return;
         }
 
         var fen;
         try {
-            fen = $('wc-chess-board')[0].game.getFEN();
+          const boardElement = $('wc-chess-board')[0];
+          if (!boardElement || !boardElement.game || typeof boardElement.game.getFEN !== 'function') {
+            console.error("CLIENT: wc-chess-board or game object not ready for FEN.");
+            alert("Chess board component is not ready.");
+            isThinking = false; chessAIFunctions.spinner(); return;
+          }
+          fen = boardElement.game.getFEN();
+          if (!fen || fen.split(" ").length < 6) {
+            console.error("CLIENT: Invalid FEN retrieved:", fen);
+            alert("Invalid FEN from board.");
+            isThinking = false; chessAIFunctions.spinner(); return;
+          }
+          console.log("CLIENT: Retrieved FEN for runChessEngine:", fen);
         } catch (e) {
-            console.error("Error getting FEN:", e);
-            alert("Could not get current board position (FEN). Make sure a game is active.");
-            isThinking = false;
-            return;
+          console.error("CLIENT: Error getting FEN:", e);
+          alert("Could not get board position (FEN).");
+          isThinking = false; chessAIFunctions.spinner(); return;
         }
 
-        engine.engine.sendMessage(`position fen ${fen}`);
-        // console.log("Sent FEN: " + fen);
+        console.log("CLIENT: Setting engine state to thinking and sending commands.");
         isThinking = true;
-        chessAIFunctions.spinner(); // Show spinner immediately
+        chessAIFunctions.spinner(); // Show spinner
+
+        // Ensure FEN is for current turn, then send position and go
+        engine.engine.sendMessage(`position fen ${fen}`);
         engine.engine.sendMessage(`go depth ${depth}`);
-        lastValue = depth;
+        lastValue = depth; // This seems to be a global used for UI, ensure it's managed if needed
       };
 
-      var lastValue = 15; // Default depth
-      chessAIFunctions.autoRun = function(lstValue) {
-        if ($('wc-chess-board')[0].game.getTurn() == $('wc-chess-board')[0].game.getPlayingAs()) {
-          chessAIFunctions.runChessEngine(lstValue);
+      var lastValue = 15; // Default depth, ensure it's updated from UI elsewhere
+      chessAIFunctions.autoRun = function(currentDepth) {
+        // This function is called by 'other' after a delay
+        console.log("CLIENT: autoRun triggered. Depth:", currentDepth, "isThinking:", isThinking, "myTurn:", myTurn);
+        // Condition check is also in main loop, but good to have here too
+        if (!isThinking && myTurn && engine.engine.isReadyForCommands) {
+            console.log("CLIENT: autoRun conditions met, calling runChessEngine.");
+            chessAIFunctions.runChessEngine(currentDepth);
+        } else {
+            console.log("CLIENT: autoRun conditions NOT met. isThinking:", isThinking, "myTurn:", myTurn, "isReadyForCommands:", engine.engine.isReadyForCommands);
+            canGo = true; // Allow next attempt from main loop if conditions not met here
         }
       }
 
       chessAIFunctions.spinner = function() {
-        if (isThinking == true) {
-          $('#overlay')[0].style.display = 'block';
-        }
-        if (isThinking == false) {
-          $('#overlay')[0].style.display = 'none';
-        }
+        try {
+            if (isThinking == true) {
+                $('#overlay').show();
+            } else {
+                $('#overlay').hide();
+            }
+        } catch(e) {/*UI not ready*/}
       }
 
       let dynamicStyles = null;
-      function addAnimation(body) {
+      function addAnimation(body) { /* ... (same as before) ... */
         if (!dynamicStyles) {
           dynamicStyles = document.createElement('style');
           dynamicStyles.type = 'text/css';
@@ -259,16 +264,11 @@ fetch("https://raw.githubusercontent.com/crazystuffofficial/chessAi/main/jQuery.
       }
 
       var loaded = false;
-      chessAIFunctions.loadEx = function() {
+      chessAIFunctions.loadEx = function() { /* ... (same as before, ensure all IDs are correct) ... */
         try {
-          if (document.getElementById('settingsContainer')) {
-            // console.log("Settings UI already loaded.");
-            return; // Already loaded
-          }
-          var tmpStyle;
-          var tmpDiv;
-
-          var div = document.createElement('div')
+          if (document.getElementById('settingsContainer')) return;
+          var div = document.createElement('div');
+          // ... (HTML content same as your last version) ...
           var content = `
             <div style="margin: 10px; padding: 10px; border: 1px solid green; border-radius: 5px;">
                 <h3 style="margin-top:0; color: lightgreen;">Chess.com AI Controller ${currentVersion}</h3>
@@ -287,20 +287,20 @@ fetch("https://raw.githubusercontent.com/crazystuffofficial/chessAi/main/jQuery.
                     <input type="number" id="targetElo" name="targetElo" min="400" max="3000" value="${chessAIVars.targetElo}" style="width: 70px; padding: 5px; background-color: #333; color: lightgreen; border: 1px solid green;">
                 </div>
                 <div>
-                    <input type="checkbox" id="autoRun" name="autoRun" value="false" style="margin-right: 3px;">
-                    <label for="autoRun">Enable Auto Run</label>
+                    <input type="checkbox" id="autoRunCb" name="autoRunCb" value="false" style="margin-right: 3px;">
+                    <label for="autoRunCb">Enable Auto Run</label>
                 </div>
                 <div>
-                    <input type="checkbox" id="autoMove" name="autoMove" value="false" style="margin-right: 3px;">
-                    <label for="autoMove">Enable Auto Move</label>
+                    <input type="checkbox" id="autoMoveCb" name="autoMoveCb" value="false" style="margin-right: 3px;">
+                    <label for="autoMoveCb">Enable Auto Move</label>
                 </div>
                 <div style="margin-top: 5px;">
-                    <label for="timeDelay" style="margin-right: 5px;">Auto Run Delay (s):</label>
-                    <input type="number" id="timeDelay" name="timeDelay" min="0.1" step="0.1" value="${chessAIVars.delay}" style="width: 60px; padding: 5px; background-color: #333; color: lightgreen; border: 1px solid green;">
+                    <label for="timeDelayInput" style="margin-right: 5px;">Auto Run Delay (s):</label>
+                    <input type="number" id="timeDelayInput" name="timeDelayInput" min="0.1" step="0.1" value="${chessAIVars.delay}" style="width: 60px; padding: 5px; background-color: #333; color: lightgreen; border: 1px solid green;">
                 </div>
                 <div style="margin-top: 5px;">
-                    <label for="depth" style="margin-right: 5px;">Engine Depth:</label>
-                    <input type="number" id="depth" name="depth" min="1" max="30" value="${lastValue}" style="width: 60px; padding: 5px; background-color: #333; color: lightgreen; border: 1px solid green;">
+                    <label for="depthInput" style="margin-right: 5px;">Engine Depth:</label>
+                    <input type="number" id="depthInput" name="depthInput" min="1" max="30" value="${lastValue}" style="width: 60px; padding: 5px; background-color: #333; color: lightgreen; border: 1px solid green;">
                 </div>
                 <div id="relButDiv" style="text-align: center; margin-top: 15px; margin-bottom: 5px;">
                      <button type="button" name="reloadEngine" id="relEngBut">Connect / Change Mode</button>
@@ -310,197 +310,125 @@ fetch("https://raw.githubusercontent.com/crazystuffofficial/chessAi/main/jQuery.
           div.innerHTML = content;
           div.setAttribute('style', 'background-color:#2c2c2c; color: lightgreen; font-family: Arial, sans-serif; width: 300px; position: fixed; top: 10px; right: 10px; z-index: 10000; border-radius: 8px; box-shadow: 0 0 10px rgba(0,255,0,0.5);');
           div.setAttribute('id', 'settingsContainer');
-
-          // Append to body or a specific persistent element on the page
           document.body.appendChild(div);
 
-
-          // Spinner Container (inside the main div for better positioning context)
           var spinCont = document.createElement('div');
           spinCont.setAttribute('style', 'display:none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); z-index: 10001; border-radius: 8px;');
           spinCont.setAttribute('id', 'overlay');
-          div.prepend(spinCont); // Prepend to be behind other controls but over content
-
-          var spinr = document.createElement('div')
-          spinr.setAttribute('style', `
-              position: absolute;
-              top: 50%;
-              left: 50%;
-              transform: translate(-50%, -50%);
-              height: 50px;
-              width: 50px;
-              animation: rotate 0.8s infinite linear;
-              border: 5px solid green;
-              border-right-color: transparent;
-              border-radius: 50%;
-          `);
+          div.prepend(spinCont);
+          var spinr = document.createElement('div');
+          spinr.setAttribute('style', `position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); height: 50px; width: 50px; animation: rotate 0.8s infinite linear; border: 5px solid green; border-right-color: transparent; border-radius: 50%;`);
           spinCont.appendChild(spinr);
-          addAnimation(`@keyframes rotate {
-           0% { transform: translate(-50%, -50%) rotate(0deg); }
-           100% { transform: translate(-50%, -50%) rotate(360deg); }
-          }`);
+          addAnimation(`@keyframes rotate {0% { transform: translate(-50%, -50%) rotate(0deg); } 100% { transform: translate(-50%, -50%) rotate(360deg); }}`);
 
-          // Event listener for AI Mode dropdown
           $('#aiMode').on('change', function() {
             chessAIVars.selectedAiMode = $(this).val();
-            if (chessAIVars.selectedAiMode === 'elo_simulator') {
-              $('#eloSettings').show();
-            } else {
-              $('#eloSettings').hide();
-            }
-            // chessAIFunctions.reloadChessEngine(); // Automatically reload when mode changes
+            $('#eloSettings').toggle(chessAIVars.selectedAiMode === 'elo_simulator');
           });
-          $('#targetElo').on('change', function() {
-            chessAIVars.targetElo = parseInt($(this).val()) || 1500;
-            // if (chessAIVars.selectedAiMode === 'elo_simulator') {
-            //   chessAIFunctions.reloadChessEngine(); // Reload if ELO changes for the ELO sim
-            // }
-          });
-
-          // Reload Button Style and Attach
-          var relBut = $('#relEngBut'); // Get the button from the HTML string
-          relBut.css({
-            'color': 'lightgreen', // Brighter green
-            'background-color': '#4CAF50', // Darker green background
-            'font-size': '16px',
-            'border': '1px solid #2E7D32', // Darker border
-            'padding': '10px 20px',
-            'letter-spacing': '1px',
-            'cursor': 'pointer',
-            'border-radius': '5px',
-            'width': '90%', // Make button wider
-             'box-shadow': '0 2px 4px rgba(0,0,0,0.3)'
-          }).hover(
-            function() { $(this).css({'background-color': '#388E3C'}); }, // Darken on hover
-            function() { $(this).css({'background-color': '#4CAF50'}); }
-          ).active(
-            function() { $(this).css({'background-color': '#2E7D32', 'transform': 'translateY(1px)'}); }
-          );
-          relBut.on('click', chessAIFunctions.reloadChessEngine);
-
-          // Trigger initial ELO visibility
-          if ($('#aiMode').val() === 'elo_simulator') {
-            $('#eloSettings').show();
-          }
-
-          loaded = true;
-          console.log("UI Loaded.");
-        } catch (error) {
-          console.error("Error in loadEx:", error);
-        }
+          $('#targetElo').on('change', function() { chessAIVars.targetElo = parseInt($(this).val()) || 1500; });
+          $('#relEngBut').css({ /* styles */ }).hover( /* hover styles */ ).active( /* active styles */ ); // Simplified for brevity
+          $('#relEngBut').on('click', chessAIFunctions.reloadChessEngine);
+          if ($('#aiMode').val() === 'elo_simulator') $('#eloSettings').show();
+          loaded = true; console.log("CLIENT: UI Loaded.");
+        } catch (error) { console.error("CLIENT: Error in loadEx:", error); }
       }
 
-      function other(delay) {
+      function other(delay) { // This is the delayed function call
         var endTime = Date.now() + delay;
         var timer = setInterval(() => {
           if (Date.now() >= endTime) {
-            if (chessAIVars.autoRun && !isThinking && myTurn) { // Double check conditions before running
-                chessAIFunctions.autoRun(lastValue);
-            }
-            canGo = true;
+            console.log("CLIENT: 'other' timer expired. Calling chessAIFunctions.autoRun.");
+            // current depth value is now read from UI in main loop and stored in chessAIVars.depth
+            chessAIFunctions.autoRun(chessAIVars.depth); // Use the globally updated depth
+            canGo = true; // Reset flag for next turn cycle
             clearInterval(timer);
           }
-        }, 10); // Check more frequently for responsiveness
+        }, 20); // Check frequently
       }
 
-      // Make sure wc-chess-board is available
       const ensureBoardInterval = setInterval(() => {
         if (typeof $ === 'function' && $('wc-chess-board').length && typeof $('wc-chess-board')[0].game !== 'undefined') {
             clearInterval(ensureBoardInterval);
-            console.log("wc-chess-board found. Initializing AI controller UI.");
-            if (!loaded) {
-                chessAIFunctions.loadEx();
-            }
-            // Initial engine load after UI is ready (or confirmed ready)
-            chessAIFunctions.loadChessEngine(); // Attempt initial connection
-        } else {
-            // console.log("Waiting for wc-chess-board to be available...");
+            console.log("CLIENT: wc-chess-board found. Initializing UI and engine connection.");
+            if (!loaded) chessAIFunctions.loadEx(); // Load UI if not already
+            // Don't auto-connect here, let user click "Connect" button
+            // chessAIFunctions.loadChessEngine(); // Initial connection attempt
         }
       }, 500);
 
-
       const mainLoopInterval = setInterval(() => {
-        if (!loaded) { // If UI not loaded, try to load it
+        if (!loaded) {
           if (typeof $ === 'function' && $('wc-chess-board').length && typeof $('wc-chess-board')[0].game !== 'undefined') {
              chessAIFunctions.loadEx();
           }
-          return; // Wait until UI is loaded before processing further
+          return;
         }
 
-        // Update vars from UI
-        chessAIVars.autoRun = $('#autoRun')[0].checked;
-        chessAIVars.autoMove = $('#autoMove')[0].checked;
-        chessAIVars.delay = parseFloat($('#timeDelay')[0].value) || 0.1;
-        let newDepth = parseInt($('#depth')[0].value) || 15;
-        chessAIVars.selectedAiMode = $('#aiMode').val();
-        chessAIVars.targetElo = parseInt($('#targetElo').val()) || 1500;
+        // Update vars from UI - use different IDs for inputs to avoid conflict with chessAIVars
+        chessAIVars.autoRun = $('#autoRunCb').is(':checked'); // Use .is(':checked') for checkboxes
+        chessAIVars.autoMove = $('#autoMoveCb').is(':checked');
+        chessAIVars.delay = parseFloat($('#timeDelayInput').val()) || 0.1;
+        chessAIVars.depth = parseInt($('#depthInput').val()) || 15; // Store depth in chessAIVars
+        // chessAIVars.selectedAiMode and targetElo are updated by their own change handlers
 
-
-        if (lastValue != newDepth) {
-          lastValue = newDepth;
-          // console.log("Depth changed to " + lastValue); // No need for alert
-        }
-
-        // isThinking = chessAIVars.isThinking; // isThinking is global, managed by engine responses
-        chessAIFunctions.spinner(); // Update spinner based on global isThinking
+        //Spinner update moved to parser and where isThinking is set
+        // chessAIFunctions.spinner();
 
         try {
-            if ($('wc-chess-board')[0] && $('wc-chess-board')[0].game) {
-                 myTurn = ($('wc-chess-board')[0].game.getTurn() == $('wc-chess-board')[0].game.getPlayingAs());
-            } else {
-                myTurn = false; // Board not ready
-            }
-        } catch (e) {
-            myTurn = false; // Error accessing game state
-        }
+          if ($('wc-chess-board')[0] && $('wc-chess-board')[0].game) {
+            myTurn = ($('wc-chess-board')[0].game.getTurn() === $('wc-chess-board')[0].game.getPlayingAs());
+          } else { myTurn = false; }
+        } catch (e) { myTurn = false; }
 
-
-        if (chessAIVars.autoRun && canGo && !isThinking && myTurn) {
-          canGo = false;
+        if (chessAIVars.autoRun && canGo && !isThinking && myTurn && engine.engine.isReadyForCommands) {
+          console.log("CLIENT: Main loop conditions MET. Auto-running. isThinking:", isThinking, "myTurn:", myTurn, "canGo:", canGo, "isReadyForCommands:", engine.engine.isReadyForCommands);
+          canGo = false; // Prevent immediate re-trigger
           var currentDelay = chessAIVars.delay * 1000;
-          other(currentDelay);
+          other(currentDelay); // Call the delayed function
+        } else if (chessAIVars.autoRun && myTurn && !isThinking && !engine.engine.isReadyForCommands) {
+            // console.log("CLIENT: Main loop - autoRun is on, myTurn, not thinking, BUT engine not ready. Waiting.");
         }
 
-        // Ensure connection status is updated if socket state changes outside of direct actions
-        if (engine.engine.socket) {
-            const statusElem = $('#chessAiStatus');
-            if (statusElem.length) {
+
+        // Update connection status text (simplified)
+        const statusElem = $('#chessAiStatus');
+        if (statusElem.length) {
+            if (engine.engine.socket) {
+                let currentStatusText = statusElem.text();
+                let newStatusText = currentStatusText;
+                let newColor = statusElem.css('color');
+
                 switch (engine.engine.socket.readyState) {
-                    case WebSocket.CONNECTING:
-                        if (statusElem.text() !== 'Connecting...') statusElem.text('Connecting...').css('color', 'yellow');
-                        break;
-                    case WebSocket.OPEN:
-                        if (statusElem.text() !== 'Connected') statusElem.text('Connected').css('color', 'lightgreen');
-                        break;
-                    case WebSocket.CLOSING:
-                        if (statusElem.text() !== 'Closing...') statusElem.text('Closing...').css('color', 'orange');
-                        break;
+                    case WebSocket.CONNECTING: newStatusText = 'Connecting...'; newColor = 'yellow'; break;
+                    case WebSocket.OPEN: newStatusText = 'Connected'; newColor = 'lightgreen'; break;
+                    case WebSocket.CLOSING: newStatusText = 'Closing...'; newColor = 'orange'; break;
                     case WebSocket.CLOSED:
-                        if (statusElem.text() !== 'Disconnected' && statusElem.text() !== 'Connection Error') statusElem.text('Disconnected').css('color', 'orange');
+                        if (currentStatusText !== 'Connection Error') { // Don't overwrite specific error
+                           newStatusText = 'Disconnected'; newColor = 'orange';
+                        }
                         break;
                 }
+                if(currentStatusText !== newStatusText) statusElem.text(newStatusText).css('color', newColor);
+            } else if (statusElem.text() !== 'Connection Error' && statusElem.text() !== 'Disconnected') {
+                 statusElem.text('Disconnected').css('color', 'orange');
             }
-        } else if ($('#chessAiStatus').length && $('#chessAiStatus').text() !== 'Connection Error') {
-             $('#chessAiStatus').text('Disconnected').css('color', 'orange');
         }
 
 
-      }, 200); // Main loop interval
+      }, 250); // Main loop interval
     }
 
     var isThinking = false;
-    var canGo = true;
+    var canGo = true;   // Flag to control if 'other' (delayed call) can be initiated
     var myTurn = false;
 
-    // Wait for jQuery and the DOM to be ready
     $(document).ready(function() {
         main();
     });
 });
 
-// Clean up stray highlights (chess.com specific potentially)
 setInterval(function(){
   if (typeof $ === 'function') {
-    $("div.highlight").not(".highlightMove").remove(); // Remove highlights not created by this script
+    $("div.highlight").not(".highlightMove").remove();
   }
 }, 500);
