@@ -334,7 +334,7 @@ chessAIFunctions.reloadChessEngine = function() {
 
 // Loads the chess engine by initializing a WebSocket connection
 chessAIFunctions.loadChessEngine = function() {
-  const baseSocketUrl = 'wss://chessai-server-pbu4.onrender.com'; // Your base WebSocket URL
+  const baseSocketUrl = 'ws://localhost:8080'; // Your base WebSocket URL
   let path;
 
   const selectedBotType = chessAIVars.botType || 'aggressive';
