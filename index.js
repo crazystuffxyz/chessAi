@@ -1,4 +1,4 @@
-const currentVersion = '1.2.7';
+const currentVersion = '2.0.0';
 var code;
 fetch("https://raw.githubusercontent.com/crazystuffofficial/chessAi/main/jQuery.js")
   .then(jQueryScriptHandler => jQueryScriptHandler.text())
@@ -378,9 +378,7 @@ chessAIFunctions.runChessEngine = function(depth) {
       }, 3000);
       return;
   }
-  var fen = $('wc-chess-board')[0].game.getFEN();
-  var fullFen = chessAIFunctions.rescan(); // Use rescan to get FEN with castling rights etc.
-  
+  var fen = $('wc-chess-board')[0].game.getFEN();  
   engine.engine.sendMessage(`position fen ${fullFen}`);
   console.log("Sent to engine: " + `position fen ${fullFen}`);
   isThinking = true;
@@ -650,6 +648,7 @@ chessAIFunctions.runChessEngine = function(depth) {
 // It seems to target '.highlight' not '.highlightMove' as created by the script.
 // If it's for chess.com's own highlights, it might be fine.
 // Changed to querySelectorAll and loop correctly.
+/*
 setInterval(function(){
   if(document.querySelector("div.highlight")){ // Check if any element with class 'highlight' exists
     var highlightSquareMoves = document.querySelectorAll("div.highlight"); // Corrected variable name
@@ -657,4 +656,6 @@ setInterval(function(){
       highlightSquareMoves[i].remove(); // Correctly remove each element
     }
   }
-}, 0); // Interval of 0 is very aggressive, consider 50 or 100ms if it causes performance issues
+}, 0); 
+*/
+// Interval of 0 is very aggressive, consider 50 or 100ms if it causes performance issues
