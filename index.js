@@ -379,8 +379,8 @@ chessAIFunctions.runChessEngine = function(depth) {
       return;
   }
   var fen = $('wc-chess-board')[0].game.getFEN();  
-  engine.engine.sendMessage(`position fen ${fullFen}`);
-  console.log("Sent to engine: " + `position fen ${fullFen}`);
+  engine.engine.sendMessage(`position fen ${fen}`);
+  console.log("Sent to engine: " + `position fen ${fen}`);
   isThinking = true;
   chessAIFunctions.spinner(); // Show spinner immediately
   engine.engine.sendMessage(`go depth ${depth}`);
