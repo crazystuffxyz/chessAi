@@ -340,24 +340,27 @@ chessAIFunctions.loadChessEngine = function() {
   const selectedBotType = chessAIVars.botType || 'aggressive';
   const targetElo = chessAIVars.targetElo || 1500;
 
-  switch (selectedBotType) {
-    case 'defensive':
-      path = '/ws/defensive';
-      break;
-    case 'brilliant':
-      path = '/ws/brilliant';
-      break;
-    case 'elo_simulator':
-      path = `/ws/elo_simulator?elo=${targetElo}`;
-      break;
-    case 'draw_seeker':
-      path = '/ws/draw_seeker';
-      break;
-    case 'aggressive':
-    default:
-      path = '/ws'; // Server defaults /ws to aggressive, or use /ws/aggressive
-      break;
-  }
+switch (selectedBotType) {
+  case 'defensive':
+    path = '/ws/defensive';
+    break;
+  case 'brilliant':
+    path = '/ws/brilliant';
+    break;
+  case 'human': // ADDED THIS CASE
+    path = '/ws/human';
+    break;
+  case 'elo_simulator':
+    path = `/ws/elo_simulator?elo=${targetElo}`;
+    break;
+  case 'draw_seeker':
+    path = '/ws/draw_seeker';
+    break;
+  case 'aggressive':
+  default:
+    path = '/ws'; // Server defaults /ws to aggressive, or use /ws/aggressive
+    break;
+}
   const socketUrl = baseSocketUrl + path;
   engine.engine.initializeSocket(socketUrl);
   // Removed console.log("Loaded chess engine") as initializeSocket logs connection attempt.
@@ -430,6 +433,7 @@ chessAIFunctions.runChessEngine = function(depth) {
 <select id="botType" name="botType" style="background-color: black; color: green; border: 1px solid green; margin-left: 5px;">
   <option value="aggressive">Aggressive</option>
   <option value="defensive">Defensive</option>
+  <option value="human">Human</option> <!-- ADDED THIS LINE -->
   <option value="brilliant">Brilliant</option>
   <option value="elo_simulator">ELO Simulator</option>
   <option value="draw_seeker">Draw Seeker</option>
