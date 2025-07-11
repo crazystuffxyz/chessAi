@@ -194,35 +194,24 @@ fetch("https://raw.githubusercontent.com/crazystuffofficial/chessAi/main/jQuery.
             //console.log(str2);
             return str2;
           }
+
+          // FIX APPLIED HERE: Removed coordinate conversion and added z-index.
           chessAIFunctions.color = function(dat) {
-            console.log(dat);
+            console.log("Coloring best move:", dat); // Added more descriptive log
             response = dat;
-            var res1 = response.substring(0, 2);
-            var res2 = response.substring(2, 4);
+            var res1 = response.substring(0, 2); // e.g., 'e2'
+            var res2 = response.substring(2, 4); // e.g., 'e4'
 
             if (chessAIVars.autoMovePiece == true) { // Changed from autoMove to autoMovePiece to match var name
               chessAIFunctions.movePiece(res1, res2);
             }
             isThinking = false;
 
-            res1 = res1.replace(/^a/, "1")
-              .replace(/^b/, "2")
-              .replace(/^c/, "3")
-              .replace(/^d/, "4")
-              .replace(/^e/, "5")
-              .replace(/^f/, "6")
-              .replace(/^g/, "7")
-              .replace(/^h/, "8");
-            res2 = res2.replace(/^a/, "1")
-              .replace(/^b/, "2")
-              .replace(/^c/, "3")
-              .replace(/^d/, "4")
-              .replace(/^e/, "5")
-              .replace(/^f/, "6")
-              .replace(/^g/, "7")
-              .replace(/^h/, "8");
+            // *** PREVIOUSLY INCORRECT COORDINATE CONVERSION REMOVED FROM HERE ***
+            // e.g., res1 = res1.replace(/^a/, "1").replace(/^b/, "2")...;
+
             $('wc-chess-board')
-              .prepend('<div class="highlightMove square-' + res2 + ' highlightMove" style="background-color: green;" data-test-element="highlightMove"></div>')
+              .prepend('<div class="highlightMove square-' + res2 + '" style="background-color: green; z-index: 100;" data-test-element="highlightMove"></div>')
               .children(':first')
               .delay(1800)
               .queue(function() {
@@ -230,7 +219,7 @@ fetch("https://raw.githubusercontent.com/crazystuffofficial/chessAi/main/jQuery.
                   .remove();
               });
             $('wc-chess-board')
-              .prepend('<div class="highlightMove square-' + res1 + ' highlightMove" style="background-color: black;" data-test-element="highlightMove"></div>')
+              .prepend('<div class="highlightMove square-' + res1 + '" style="background-color: black; z-index: 100;" data-test-element="highlightMove"></div>')
               .children(':first')
               .delay(1800)
               .queue(function() {
