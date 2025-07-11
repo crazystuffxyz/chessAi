@@ -207,11 +207,25 @@ fetch("https://raw.githubusercontent.com/crazystuffofficial/chessAi/main/jQuery.
             }
             isThinking = false;
 
-            // *** PREVIOUSLY INCORRECT COORDINATE CONVERSION REMOVED FROM HERE ***
-            // e.g., res1 = res1.replace(/^a/, "1").replace(/^b/, "2")...;
+             res1 = res1.replace("a", "1")
+              .replace("b", "2")
+              .replace("c", "3")
+              .replace("d", "4")
+              .replace("e", "5")
+              .replace("f", "6")
+              .replace("g", "7")
+              .replace("h", "8");
+            res2 = res2.replace("a", "1")
+              .replace("b", "2")
+              .replace("c", "3")
+              .replace("d", "4")
+              .replace("e", "5")
+              .replace("f", "6")
+              .replace("g", "7")
+              .replace("h", "8");
 
             $('wc-chess-board')
-              .prepend('<div class="highlightMove square-' + res2 + '" style="background-color: green; z-index: 100;" data-test-element="highlightMove"></div>')
+              .prepend('<div class="highlight square-' + res2 + '" style="background-color: green; z-index: 100;" data-test-element="highlight"></div>')
               .children(':first')
               .delay(1800)
               .queue(function() {
@@ -219,7 +233,7 @@ fetch("https://raw.githubusercontent.com/crazystuffofficial/chessAi/main/jQuery.
                   .remove();
               });
             $('wc-chess-board')
-              .prepend('<div class="highlightMove square-' + res1 + '" style="background-color: black; z-index: 100;" data-test-element="highlightMove"></div>')
+              .prepend('<div class="highlight square-' + res1 + '" style="background-color: black; z-index: 100;" data-test-element="highlight"></div>')
               .children(':first')
               .delay(1800)
               .queue(function() {
