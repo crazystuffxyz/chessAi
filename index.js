@@ -223,7 +223,7 @@ fetch("https://raw.githubusercontent.com/crazystuffofficial/chessAi/main/jQuery.
               .replace("f", "6")
               .replace("g", "7")
               .replace("h", "8");
-$('<div class="highlight square-' + res1 + '" style="background-color: green;" data-test-element="highlight"></div>')
+$('<div class="highlight square-' + res1 + '" style="background-color: black; opacity: 0.8;" data-test-element="highlight"></div>')
   .insertAfter($('wc-chess-board').first().children('.element-pool').first())
   .delay(1800)
   .queue(function(next) {
@@ -231,7 +231,7 @@ $('<div class="highlight square-' + res1 + '" style="background-color: green;" d
     next();
   });
 
-$('<div class="highlight square-' + res2 + '" style="background-color: green;" data-test-element="highlight"></div>')
+$('<div class="highlight square-' + res2 + '" style="background-color: green; opacity: 0.8;" data-test-element="highlight"></div>')
   .insertAfter($('wc-chess-board').first().children('.element-pool').first())
   .delay(1800)
   .queue(function(next) {
