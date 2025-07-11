@@ -223,23 +223,19 @@ fetch("https://raw.githubusercontent.com/crazystuffofficial/chessAi/main/jQuery.
               .replace("f", "6")
               .replace("g", "7")
               .replace("h", "8");
+$('<div class="highlight square-' + res1 + '" style="background-color: green;" data-test-element="highlight"></div>')
+  .insertAfter($('wc-chess-board').find('.element-pool'))
+  .delay(1800)
+  .queue(function(next) {
+    $(this).remove();
+  });
+$('<div class="highlight square-' + res2 + '" style="background-color: green;" data-test-element="highlight"></div>')
+  .insertAfter($('wc-chess-board').find('.element-pool'))
+  .delay(1800)
+  .queue(function(next) {
+    $(this).remove();
+  });
 
-            $('wc-chess-board')
-              .prepend('<div class="highlight square-' + res2 + '" style="background-color: green;" data-test-element="highlight"></div>')
-              .children(':first')
-              .delay(1800)
-              .queue(function() {
-                $(this)
-                  .remove();
-              });
-            $('wc-chess-board')
-              .prepend('<div class="highlight square-' + res1 + '" style="background-color: black;" data-test-element="highlight"></div>')
-              .children(':first')
-              .delay(1800)
-              .queue(function() {
-                $(this)
-                  .remove();
-              });
           }
 
           chessAIFunctions.movePiece = function(from, to) {
