@@ -225,7 +225,7 @@ fetch("https://raw.githubusercontent.com/crazystuffofficial/chessAi/main/jQuery.
               .replace("h", "8");
 
             $('wc-chess-board')
-              .prepend('<div class="highlight square-' + res2 + '" style="background-color: green; z-index: 100;" data-test-element="highlight"></div>')
+              .prepend('<div class="highlight square-' + res2 + '" style="background-color: green;" data-test-element="highlight"></div>')
               .children(':first')
               .delay(1800)
               .queue(function() {
@@ -233,7 +233,7 @@ fetch("https://raw.githubusercontent.com/crazystuffofficial/chessAi/main/jQuery.
                   .remove();
               });
             $('wc-chess-board')
-              .prepend('<div class="highlight square-' + res1 + '" style="background-color: black; z-index: 100;" data-test-element="highlight"></div>')
+              .prepend('<div class="highlight square-' + res1 + '" style="background-color: black;" data-test-element="highlight"></div>')
               .children(':first')
               .delay(1800)
               .queue(function() {
